@@ -1,0 +1,132 @@
+package com.golden.standard.external.common.util;
+
+import com.golden.framework.core.base.exception.BaseException;
+import com.golden.framework.utils.tools.StringUtil;
+import org.apache.commons.httpclient.HttpClient;
+import org.apache.commons.httpclient.methods.PostMethod;
+import org.apache.http.HttpEntity;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.message.BasicHeader;
+import org.apache.http.util.EntityUtils;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import java.util.Objects;
+
+/**
+ * HTTP 请求工具类
+ * @author wuk
+ * @date 2020/05/16
+ */
+public class HttpClientUtil {
+
+    /**
+     * POST请求 接收data-form参数
+     * @param url
+     * @param params
+     * @return
+     */
+    public static byte[] doPost(String url, Map<String, String> params) {
+        HttpClient client = new HttpClient();
+        client.getParams().setConnectionManagerTimeout(15000);
+        client.getHttpConnectionManager().getParams().setSoTimeout(15000);
+        client.getHttpConnectionManager().getParams().setConnectionTimeout(15000);
+        PostMethod method = new PostMethod(url);
+        method.getParams().setContentCharset("UTF-8");
+        for(String key : params.keySet()){
+            String value = params.get(key);
+            if (!StringUtil.isNull(value)) {
+                method.addParameter(key, value);
+            }
+        }
+        byte[] ret = null;
+        try {
+            int status = client.executeMethod(method);
+            if (status != 200) {
+                BaseException.throwException(String.format("服务器返回错误：[%d][%s]", status, url));
+            }
+            ret = method.getResponseBody();
+        } catch (Exception e) {
+            BaseException.throwException(String.format("发送数据失败：[%s][%s]", e.getMessage(), url));
+        } finally {
+            method.releaseConnection();
+        }
+        return ret;
+    }
+
+    /**
+     * POST请求 接收raw参数
+     * @param url
+     * @param params
+     * @return
+     */
+    public static String doPost(String url, String params) {
+        String res = null;
+        CloseableHttpClient client = null;
+        HttpPost httpPost = null;
+        CloseableHttpResponse response = null;
+        try {
+            client = HttpClients.createDefault();
+            httpPost = new HttpPost(url);
+            StringEntity entity = new StringEntity(params, StandardCharsets.UTF_8);
+            entity.setContentType("application/json");
+            entity.setContentEncoding(new BasicHeader("text/json", "application/json"));
+            httpPost.setEntity(entity);
+            response = client.execute(httpPost);
+            if (null != response) {
+                HttpEntity resEntity = response.getEntity();
+                if (resEntity != null) {
+                    res = EntityUtils.toString(resEntity, StandardCharsets.UTF_8);
+                }
+            }
+        } catch (Exception e) {
+            BaseException.throwException(String.format("发送数据失败：[%s][%s]", e.getMessage(), url));
+        } finally {
+            try {
+                Objects.requireNonNull(response).close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return res;
+    }
+
+    /**
+     * GET请求
+     * @param url
+     * @return
+     */
+    public static String doGet(String url) {
+        String res = null;
+        CloseableHttpClient client = null;
+        HttpGet httpGet = null;
+        CloseableHttpResponse response = null;
+        try {
+            client = HttpClients.createDefault();
+            httpGet = new HttpGet(url);
+            response = client.execute(httpGet);
+            if (null != response) {
+                HttpEntity resEntity = response.getEntity();
+                if (resEntity != null) {
+                    res = EntityUtils.toString(resEntity, StandardCharsets.UTF_8);
+                }
+            }
+        } catch (Exception e) {
+            BaseException.throwException(String.format("发送数据失败：[%s][%s]", e.getMessage(), url));
+        } finally {
+            try {
+                Objects.requireNonNull(response).close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return res;
+    }
+
+}
